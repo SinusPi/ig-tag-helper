@@ -1,63 +1,107 @@
 import './App.css';
 import React from 'react';
-import { Button,Dialog,CircularProgress,Backdrop,Tooltip,Chip,  createMuiTheme } from '@material-ui/core';
+import { Button, Dialog, CircularProgress, Backdrop, Tooltip, Chip, createMuiTheme, Divider, Paper } from '@material-ui/core';
 import InstagramLogin from "react-instagram-oauth";
+import { Link } from "react-router-dom";
 import { createStore } from 'redux'
 import { useSelector } from 'react-redux'
 import { makeStyles } from '@material-ui/core/styles';
+import { MediaList } from './MediaList.js';
+import { MediaAnalyzer } from "./MediaAnalyzer.js"
+import { InstagramMediaLoader } from "./InstagramMediaLoader.js"
+import { SelectedTags } from "./SelectedTags.js"
+import { FocusedTag } from "./FocusedTag.js"
+import { FocusedInsta } from "./FocusedInsta.js"
 import {
   BrowserRouter as Router,
   Switch,
   Route,
-  Link,
   Redirect,
-  useParams,
-  useLocation,
 } from "react-router-dom";
 
-var CFG={}
-CFG.insta_app_id="578554696871308";
-CFG.insta_app_secret="f8bcfef01d08270b99f4e092231f9c0c";
-CFG.redirect_uri="https://djab.eu:3000/";
+var CFG = {}
+CFG.insta_app_id = "578554696871308";
+CFG.insta_app_secret = "f8bcfef01d08270b99f4e092231f9c0c";
+CFG.redirect_uri = window.location.protocol + "//" + window.location.host + "/";
+
+/*
+const initialState = {
+  token: JSON.parse(window.localStorage.getItem("instagram_token") || "null"),
+  userid: JSON.parse(window.localStorage.getItem("instagram_userid") || "null"),
+  media: JSON.parse(window.localStorage.getItem("instagram_media") || "null"),
+  auth_shown:false,
+  username: null,
+  allmedia: JSON.parse(window.localStorage.getItem("instagram_media") || "null"),
+  loading: false,
+  error: false,
+  url: null,
+  selectedtags: [],
+  tags: JSON.parse(window.localStorage.getItem("instagram_tags") || "null"),
+}
+*/
+const load = id => JSON.parse(localStorage.getItem(id) || "null")
+const save = (val, id) => localStorage.setItem(id, JSON.stringify(val))
 
 const initialState = {
-  token:JSON.parse(window.localStorage.getItem("instagram_token") || "null"),
-  userid:JSON.parse(window.localStorage.getItem("instagram_userid") || "null"),
-  media:JSON.parse(window.localStorage.getItem("instagram_media") || "null"),
-  username:null,
-  allmedia:false,
-  loading:false,
-  error:false,
-  url:null,
-  analyzed:false,
-  selectedtags:[],
+  token: load("instagram_token"),
+  userid: load("instagram_userid"),
+  media: load("instagram_media"),
+  auth_shown: false,
+  username: null,
+  allmedia: !!load("instagram_media"),
+  loading: false,
+  error: false,
+  url: null,
+  selectedtags: [],
+  tags: null,
+  mediatags: null,
+  counterloading: false,
+  tagcounts: null
 }
 
 function appReducer(state = initialState, action) {
   // The reducer normally looks at the action type field to decide what happens
-  console.log("Dispatch: ",action.type)
+  console.log("Dispatch: ", action.type)
   switch (action.type) {
     // Do something here based on the different types of actions
     case "oauth/gottoken":
-      localStorage.setItem("instagram_token",JSON.stringify(action.payload.token))
-      localStorage.setItem("instagram_userid",JSON.stringify(action.payload.userid))
-      return {...state, token:action.payload.token, userid:action.payload.userid, error:null, loading:false}
+      save(action.payload.token, "instagram_token")
+      save(action.payload.userid, "instagram_userid")
+      return { ...state, token: action.payload.token, userid: action.payload.userid, error: null, loading: false, auth_shown: false }
     case "oauth/clear":
-      return {...state, token:null, userid:null, loading:false, error:null, media:null, allmedia:false}
+      localStorage.removeItem("instagram_token")
+      localStorage.removeItem("instagram_userid")
+      localStorage.removeItem("instagram_media")
+      localStorage.removeItem("instagram_tags")
+      return { ...state, token: null, userid: null, loading: false, error: null, media: null, allmedia: false, tags: null }
+    case "oauth/query":
+      return { ...state, auth_shown: true }
     case "oauth/error":
-      return {...state, token:null, userid:null, loading:false, error:action.payload}
+      return { ...state, token: null, userid: null, loading: false, auth_shown: false, error: action.payload }
 
     case "loader/loading":
-      return {...state, loading:true}
+      return { ...state, loading: true }
     case "loader/gotusername":
-      return {...state, username:action.payload, loading:false}
+      return { ...state, username: action.payload, loading: false }
     case "loader/gotmedia":
       const newmedia = state.media || []
-      return {...state, media:newmedia.concat(action.payload.media), url:action.payload.url, allmedia:!action.payload.url, loading:false}
-    
+      const allmedia = !action.payload.url
+      save(action.payload.media, "instagram_media")
+      return { ...state, media: newmedia.concat(action.payload.media), url: action.payload.url, allmedia, loading: false }
+
     case "analyzer/analyzed":
-      return {...state, analyzed:true, media:action.payload.media, tags:action.payload.tags}
-    
+      return { ...state, mediatags: action.payload.mediatags, tags: action.payload.tags }
+
+    /*
+    case "tagcounter/loading":
+      return { ...state, counterloading:true }
+
+    case "tagcounter/count":
+      const tagcounts = { ...state.tagcounts, ...action.payload.tag }
+      save(tagcounts, "instagram_tagcounts")
+      return { ...state, qqcounterloading:false, tagcounts }
+    */
+
     /*
     case "nav/focus-none":
       return {...state, focustype:null}
@@ -68,13 +112,13 @@ function appReducer(state = initialState, action) {
     */
 
     case "selecttag/toggle":
-      const tag=action.payload.tag
-      var st=[...state.selectedtags]
-      const i=st.indexOf(tag)
-      if (i>-1) st.splice(i,1)
+      const tag = action.payload.tag
+      var st = [...state.selectedtags]
+      const i = st.indexOf(tag)
+      if (i > -1) st.splice(i, 1)
       else st.push(tag)
-      return {...state, selectedtags:st }
-    
+      return { ...state, selectedtags: st }
+
     default:
       // If this reducer doesn't recognize the action type, or doesn't
       // care about this specific action, return the existing state unchanged
@@ -82,7 +126,7 @@ function appReducer(state = initialState, action) {
   }
 }
 
-const store = createStore(appReducer,initialState)
+const store = createStore(appReducer, initialState)
 
 // Log the initial state
 console.log('Initial state: ', store.getState())
@@ -95,7 +139,7 @@ const unsubscribe = store.subscribe(() =>
 )
 
 
-var life=20;
+var life = 20;
 
 /*
 function useStickyState(defaultValue, key) {
@@ -114,46 +158,68 @@ function useStickyState(defaultValue, key) {
 let code_in_url = window.location.search.includes("code=")
 
 function heartbeat() {
-  if (life<0) return;
+  if (life < 0) { console.error("DEAD"); return; }
   if (code_in_url) return;
   const state = store.getState()
-  if (!state.loading && state.token && state.userid && state.username==null) {
+  if (!state.loading && state.token && state.userid && state.username == null) {
     console.log("LOGIN")
     life--
-    InstagramMediaLoader.login()
+    store.dispatch({ type: "loader/loading" })
+    InstagramMediaLoader.login(state.token).then(data => store.dispatch({ type: "loader/gotusername", payload: data.username }), err => store.dispatch({ type: "oauth/error", payload: err }))
   } else if (!state.loading && state.username && !state.allmedia) {
     console.log("GET MEDIA")
     life--
-    InstagramMediaLoader.loadMedia()
-  } else if (!state.loading && state.allmedia && !state.analyzed) {
+    store.dispatch({ type: "loader/loading" })
+    InstagramMediaLoader.loadMedia(state.token, state.url).then(data => {
+      console.log("Fetched media:", data)
+      store.dispatch({ type: "loader/gotmedia", payload: { media: data?.data, url: data?.paging?.next } })
+    }, err => store.dispatch({ type: "oauth/error", payload: err }))
+
+  } else if (!state.loading && state.allmedia && !state.tags) {
     console.log("ANALYZING")
     life--
-    MediaAnalyzer.analyze(state.media)
+    const media_tags = MediaAnalyzer.analyze(state.media, store)
+    store.dispatch({ type: "analyzer/analyzed", payload: media_tags })
   }
+  /*
+  } else if (state.tags && !state.counterloading) {
+    for (let tag in state.tags) {
+      if (!Object.keys(state.tagcounts || {}).includes(tag)) {
+        console.log("COUNTING", tag)
+        store.dispatch({ type: "tagcounter/loading" })
+        InstagramTagCounter.count(tag).then(count => {
+          store.dispatch({ type: "tagcounter/count", payload: { [tag]: count } })
+        })
+        life = life - 0.01
+        break
+      }
+    }
+  }
+  */
 }
 store.subscribe(heartbeat)
 
-setInterval(()=>{
+setInterval(() => {
   // heartbeat
   heartbeat();
-},100)
+}, 100)
 
-const authHandler = (a,b)=>{
+const authHandler = (a, b) => {
   //console.log("AuthHandler:",a,b)
   if (b?.access_token) {
-    console.log("Token received from popup!",b)
-    store.dispatch({type:"oauth/gottoken",payload:{token:b.access_token,userid:b.user_id}})
+    console.log("Token received from popup!", b)
+    store.dispatch({ type: "oauth/gottoken", payload: { token: b.access_token, userid: b.user_id } })
   }
 }
 
 function App() {
 
-  const token = useSelector(state=>state.token)
-  const userid = useSelector(state=>state.userid)
-  const username = useSelector(state=>state.username)
-  const media = useSelector(state=>state.media)
-  const loading = useSelector(state=>state.loading)
-
+  const userid = useSelector(state => state.userid)
+  const username = useSelector(state => state.username)
+  const media = useSelector(state => state.media)
+  const loading = useSelector(state => state.loading)
+  const tags = useSelector(state => state.tags)
+  const auth_shown = useSelector(state => state.auth_shown)
 
   /*
   React.useEffect(()=>{
@@ -207,65 +273,77 @@ function App() {
 
   return (
     <Router>
-      {!media && !code_in_url && <Redirect to="/"/>}
-    <>
-    <div className="App">
+      {!media && !code_in_url && <Redirect to="/" />}
+      <>
+        <div className="App">
 
-      <div className="topbar">
-        {code_in_url ? (
-          <div style={{flex:"1 1"}}>Authenticating...</div>
-        ) : [
-            <div style={{flex:"1 1"}}>{userid&&username?<div>Logged in as: <b>{username}</b></div>:"Not logged in"}</div>,
-            <Button style={{minWidth:"8em",flex:"0 0"}} onClick={()=>store.dispatch({type:"oauth/clear"})}>Reauthorize</Button>
-        ]}
-      </div>
+          <div className="topbar">
+            {code_in_url ?
+              <div style={{ flex: "1 1" }}>Authenticating...</div>
+              :
+              <>
+                <div style={{ flex: "1 1" }}>{userid && username ? <div>Logged in as: <b>{username}</b></div> : "Not logged in"}</div>
+                <Button style={{ minWidth: "8em", flex: "0 0" }} onClick={() => store.dispatch({ type: "oauth/clear" })}>Reset</Button>
+                <Button style={{ minWidth: "8em", flex: "0 0" }} onClick={() => store.dispatch({ type: "oauth/query" })}>Reauthorize</Button>
+              </>
+            }
+          </div>
 
-      <div className={`content ${code_in_url?"is-hidden":""}`}>
-        
-        {/* MAIN APP */}
-        
-        <SelectedTags/>
+          <div className={`content ${code_in_url ? "is-hidden" : ""}`}>
 
-        <MediaList className="media" media={media}/>
+            {/* MAIN APP */}
 
-        <Switch>
-          <Route path="/tag/:tag">
-            <FocusedTag />
-          </Route>
-          <Route path="/insta/:id">
-            <FocusedInsta />
-          </Route>
-        </Switch>
+            <Paper>
+            {tags && <SelectedTags />}
+            </Paper>
 
-      </div>
+            <Paper>
+              <MediaList className="media" media={media} />
+              {tags && <Link to="/tag/*">All tags</Link>}
+            </Paper>
 
-      <TokenDialog
-        open={!token && !code_in_url}
-        onClose={()=>null}>
-        <div>You need an Instagram token.</div>
-        <div>Please re-authorize with Instagram.</div>
-        
-        <InstagramLogin
-          authCallback={authHandler}
-          appId={CFG.insta_app_id}
-          appSecret={CFG.insta_app_secret}
-          redirectUri={CFG.redirect_uri}
-          scope={["user_profile","user_media"]}
-          buttonTheme="simple"
-        />
-      </TokenDialog>
+            {tags &&
+              <>
+                <Switch>
+                  <Route path="/tag/:tag">
+                    <FocusedTag />
+                  </Route>
+                  <Route path="/insta/:id">
+                    <FocusedInsta />
+                  </Route>
+                </Switch>
+              </>
+            }
 
-      <InstagramLogin
+          </div>
+
+          <TokenDialog
+            open={auth_shown}
+            onClose={() => null}>
+            <div>You need an Instagram token.</div>
+            <div>Please re-authorize with Instagram.</div>
+
+            <InstagramLogin
+              authCallback={authHandler}
+              appId={CFG.insta_app_id}
+              appSecret={CFG.insta_app_secret}
+              redirectUri={CFG.redirect_uri}
+              scope={["user_profile", "user_media"]}
+              buttonTheme="simple"
+            />
+          </TokenDialog>
+
+          <InstagramLogin
             authCallback={authHandler}
             appId={CFG.insta_app_id}
             appSecret={CFG.insta_app_secret}
             redirectUri={CFG.redirect_uri}
-            scope={["user_profile","user_media"]}
+            scope={["user_profile", "user_media"]}
             buttonTheme="simple"
             className="is-hidden"
-       />
+          />
 
-      {/*
+          {/*
       <InstagramLogin
         authCallback={authHandler}
         appId={CFG.insta_app_id}
@@ -274,76 +352,23 @@ function App() {
         className={"is-hidden"}
       />
       */}
-    </div>
-    <Backdrop className="backdrop" open={loading}>
-      <CircularProgress color="hsl(160,20%,100%)" />
-    </Backdrop>
-    </>
+        </div>
+        <Backdrop className="backdrop" open={loading}>
+          <CircularProgress color="primary" />
+        </Backdrop>
+      </>
     </Router>
-
 
   );
 }
 
-function chipclick(ev,t) {
+export function chipclick_toggle(ev,t) {
+  ev.preventDefault()
+  store.dispatch({ type: "selecttag/toggle", payload: { tag: t } })
+}
+export function chipclick(ev, t) {
   if (!ev.shiftKey) return true;
-  ev.preventDefault();
-  store.dispatch({type:"selecttag/toggle",payload:{tag:t}})
-}
-function FocusedTag() {
-  //let { path, url } = useRouteMatch();
-  var { tag } = useParams();
-  const tags = useSelector(state=>state.tags)
-  const selectedtags = useSelector(state=>state.selectedtags)
-  if (!tags) return null;
-  //const tag = useSelector(state=>state.focustag)
-  tag="#"+tag
-  return (
-    <>
-            <h1>
-            <Chip
-               label={`${tag}`}
-               onClick={(ev)=>chipclick(ev,tag)}
-               color={selectedtags.includes(tag)?"primary":"default"}
-               component={Link}
-               to={`/tag/${tag.substring(1)}`}
-               />
-            </h1>
-            <div className="tagbox">
-              {tags[tag].with_ordered.map((t)=><Chip
-               size="small"
-               label={`${t} [${tags[tag].with[t]}]`}
-               onClick={(ev)=>chipclick(ev,t)}
-               color={selectedtags.includes(t)?"primary":"default"}
-               component={Link}
-               to={`/tag/${t.substring(1)}`}
-               />)}
-            </div>
-    </>
-  )
-               //className={`chip ${selectedtags.includes(t)?"selected":""}`}
-  // onClick={()=>store.dispatch({type:"nav/focus-tag",payload:{tag:t}})}
-}
-function FocusedInsta() {
-  const { id } = useParams();
-  const media = useSelector(state=>state.media)
-  const selectedtags = useSelector(state=>state.selectedtags)
-  const insta = media[id]
-  if (!insta) return null;
-  return <>
-            <h1>{insta.caption.substring(0,50)}</h1>
-            <div className="tagbox">
-              {insta.tags.map((t)=><Chip
-                size="small"
-                label={t} 
-                color={selectedtags.includes(t)?"primary":"default"}
-                onClick={(ev)=>chipclick(ev,t)}
-                component={Link}
-                to={`/tag/${t.substring(1)}`}
-              />)}
-            </div>
-  </>  
-  // onClick={()=>store.dispatch({type:"nav/focus-tag",payload:{tag:t}})}
+  chipclick_toggle(ev,t)
 }
 
 function TokenDialog(props) {
@@ -360,23 +385,6 @@ function TokenDialog(props) {
   );
 }
 
-function SelectedTags(props) {
-  const selectedtags = useSelector(state=>state.selectedtags)
-  let location = useLocation();
-  return (
-  <div className="selectedtags">
-    {selectedtags.map((t)=><Chip
-      size="small"
-      label={t}
-      onClick={(ev)=>chipclick(ev,t)}
-      onDelete={(ev)=>{ev.preventDefault(); store.dispatch({type:"selecttag/toggle",payload:{tag:t}})}}
-      color={location.pathname==`/tag/${t.substring(1)}` && "secondary" || "primary"}
-      component={Link}
-      to={`/tag/${t.substring(1)}`}
-    />)}
-  </div>
-  )
-}
 
 
 /*
@@ -387,116 +395,9 @@ error_subcode	33
 fbtrace_id	"ACZ4mE84Pf4I7oSf2lfIe1D"
 */
 
-const ig_fetch = (url)=>{
-  return fetch(url)
-  .then(response => response.json())
-  .then(data => {
-    console.log("Fetched:",data)
-    if (data?.error) {
-      if (data.error.type=="OAuthException" && data.error.code==190) { console.error("Token expired! Clearing token, hoping someone will retry."); return Promise.reject({type:"oauth/clear"}); }
-      else if (data.error.type=="OAuthException" && data.error.code==4) { console.error("Too many requests!"); return Promise.reject({type:"oauth/error",payload:"FLOODED"}); }
-      else if (data.error.type=="OAuthException" && data.error.code==2) { console.error("Internal error at Instagram!"); return Promise.reject({type:"oauth/error",payload:"ERROR"}); }
-      else return Promise.reject({type:"oauth/error",payload:data.error});
-    }
-    return data
-  })
-}
 
-class InstagramMediaLoader {
-  static login(props) {
-    const state = store.getState()
-    const { token,userid } = state
 
-    store.dispatch({type:"loader/loading"})
-
-    return ig_fetch(`https://graph.instagram.com/${userid}?fields=id,username&access_token=${token}`)
-    .then(data=>store.dispatch({type:"loader/gotusername",payload:data.username}),err=>store.dispatch({type:"oauth/error",payload:err}))
-  }
-
-  static async loadMedia() {
-    const state = store.getState()
-    const { token,url } = state
-
-    console.log("LoadMedia started: ",url)
-
-    store.dispatch({type:"loader/loading"})
-
-    /*
-    await fetch(`https://graph.instagram.com/${userId}?fields=id,username&access_token=${token}`)
-    .then(response => response.json())
-    .then(async data => {
-      console.log("Fetched:",data)
-      if (data?.error) {
-        if (data.error.type=="OAuthException" /* && data.error.code==190 * /) { console.log("Clearing token"); setToken(null); return; }
-      }
-      if (data?.username) setUsername(data.username);
-    */
-    
-    return ig_fetch(url || `https://graph.instagram.com/me/media/?fields=id,caption,media_type,media_url,timestamp,permalink&access_token=${token}`)
-      .then(data => {
-        console.log("Fetched media:",data)
-        store.dispatch({type:"loader/gotmedia",payload:{media:data?.data, url:data?.paging?.next}})
-      })
-  }
-}
-
-const theme = createMuiTheme({})
-
-const MediaList = (props) => {
-  let i=0
-  let location = useLocation();
-  const match = location.pathname.match(/\/tag\/(.*)/)
-  const focusedtag = "#"+(match && match[1] || "")
-  
-  return <div className={props.className||"media"}>
-    <ul>
-      {props.media?(
-        props.media.map((med,idx)=>(
-          <li
-            key={i++}
-            
-          >
-            <Tooltip title={`${med.timestamp} (${med.tags?.count||0} tags)\n${med.caption.substring(0,50)}...`}>
-              <Link to={`/insta/${idx}`}><div
-                style={{backgroundImage:`url(${med.media_url})`,boxShadow:med.tags?.includes(focusedtag)&&`inset 0px 0px 0px 10px ${theme.palette.primary.main}`}}
-                className={`mediali`}
-              /></Link>
-            </Tooltip>
-          </li>
-        ))
-      ) : (
-        <li>No media!</li>
-      )}
-    </ul>
-  </div>
-  //                onClick={(ev)=>store.dispatch({type:"nav/focus-insta",payload:{insta:idx}})}
-
-}
-
-class MediaAnalyzer {
-  static analyze(media) {
-    let newmedia = JSON.parse(JSON.stringify(media))
-    let alltags=[]
-    for (let med of newmedia) {
-      med.tags = [...med.caption?.matchAll(/#[\w\dąćęłńóśźżĄĆĘŁŃÓŚŹŻ_]+/g)].map(a=>a[0])
-      for (let tag1 of med.tags) {
-        if (!alltags[tag1]) alltags[tag1]={count:0,with:{}}
-        alltags[tag1].count++;
-        for (let tag2 of med.tags) {
-          if (tag1==tag2) continue
-          alltags[tag1].with[tag2] = (alltags[tag1].with[tag2]||0)+1;
-        }
-      }
-    }
-    for (let tag in alltags) {
-      let tagd=alltags[tag]
-      tagd.with_ordered = Object.keys(tagd.with).sort((a,b)=>tagd.with[b]-tagd.with[a])
-    }
-    store.dispatch({type:"analyzer/analyzed",payload:{media:newmedia,tags:alltags}})
-  }
-}
-
-export {App, store}
+export { App, store }
 
 /*
 <input type="text" id="tag" />
@@ -504,40 +405,40 @@ export {App, store}
 <div id="picked" style="position:absolute; left:500px; top:0; border:1px solid black;"></div>
 
 <script type="text/babel">
-	var tags = {};
+  var tags = {};
 
   var picked_tags=[]
-	
-	function focusTag(tag) {
-		$("#tag").val(tag).change()
-	}
-	function renderPicked() {
-		$("#picked").empty()
-		for (let tag of picked_tags) {
-			let $ptag = $("<div class='pickedtag'>"+tag+"</div>")
-			$ptag.data("tag",tag)
-			$ptag.click(function(e) { focusTag($(this).data("tag")) })
-			$("#picked").append($ptag)
-		}
-	}
-	function toggleTag(tag) {
-		let idx
-		if ((idx=picked_tags.indexOf(tag))!=-1) picked_tags.splice(idx,1); else picked_tags.push(tag)
-		renderPicked()
-	}
-	function tag(s,num) {
-		let t=$(`<div class='tag'>${s} [${num}]</div>`)
-		t.click(function(e) { toggleTag(s) })
-		return t
-	}
-	$(()=>{
-		$("input#tag").change(function(e) {
-			$("#out").empty()
-			let t=tags[$(this).val()]
-			if (!t) return $("#out").html("");
-			let tagdivs = t.with_ordered.map((k)=>tag(k,t.with[k]))
-			console.log(tagdivs)
-			$("#out").append(tagdivs)
-		})
-	})
+
+  function focusTag(tag) {
+    $("#tag").val(tag).change()
+  }
+  function renderPicked() {
+    $("#picked").empty()
+    for (let tag of picked_tags) {
+      let $ptag = $("<div class='pickedtag'>"+tag+"</div>")
+      $ptag.data("tag",tag)
+      $ptag.click(function(e) { focusTag($(this).data("tag")) })
+      $("#picked").append($ptag)
+    }
+  }
+  function toggleTag(tag) {
+    let idx
+    if ((idx=picked_tags.indexOf(tag))!=-1) picked_tags.splice(idx,1); else picked_tags.push(tag)
+    renderPicked()
+  }
+  function tag(s,num) {
+    let t=$(`<div class='tag'>${s} [${num}]</div>`)
+    t.click(function(e) { toggleTag(s) })
+    return t
+  }
+  $(()=>{
+    $("input#tag").change(function(e) {
+      $("#out").empty()
+      let t=tags[$(this).val()]
+      if (!t) return $("#out").html("");
+      let tagdivs = t.with_ordered.map((k)=>tag(k,t.with[k]))
+      console.log(tagdivs)
+      $("#out").append(tagdivs)
+    })
+  })
 */

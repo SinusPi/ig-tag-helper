@@ -57,3 +57,5 @@ body {
 .loading {
  
 }
+.chip-tagwith::before { content: " +"; }
+.chip-tagtotal::before { content: " *"; }
