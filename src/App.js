@@ -39,7 +39,7 @@ const initialState = {
   tags: JSON.parse(window.localStorage.getItem("instagram_tags") || "null"),
 }
 */
-const load = id => JSON.parse(localStorage.getItem(id) || "null")
+const load = id => { try { return JSON.parse(localStorage.getItem(id) )| "null" } catch { return null } }
 const save = (val, id) => localStorage.setItem(id, JSON.stringify(val))
 
 const initialState = {
@@ -52,7 +52,7 @@ const initialState = {
   loading: false,
   error: false,
   url: null,
-  selectedtags: [],
+  selectedtags: (()=>{let s=load("selected_tags"); return ((typeof s==Array) && s) || []})(),
   tags: null,
   mediatags: null,
   counterloading: false,
@@ -117,7 +117,12 @@ function appReducer(state = initialState, action) {
       const i = st.indexOf(tag)
       if (i > -1) st.splice(i, 1)
       else st.push(tag)
+      save(st,"selected_tags")
       return { ...state, selectedtags: st }
+
+    case "selecttag/clear":
+      save(st,"selected_tags")
+      return { ...state, selectedtags: [] }
 
     default:
       // If this reducer doesn't recognize the action type, or doesn't
@@ -126,7 +131,10 @@ function appReducer(state = initialState, action) {
   }
 }
 
-const store = createStore(appReducer, initialState)
+var devtools = undefined
+//var devtools = window.__REDUX_DEVTOOLS_EXTENSION__ && window.__REDUX_DEVTOOLS_EXTENSION__()
+
+const store = createStore(appReducer, initialState, devtools)
 
 // Log the initial state
 console.log('Initial state: ', store.getState())
