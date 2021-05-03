@@ -15,7 +15,7 @@ const ig_fetch = (url) => {
 
 export const InstagramMediaLoader={
 	login:(token)=>{
-		return ig_fetch(`https://graph.instagram.com/me?fields=id,username&access_token=${token}`)
+		return ig_fetch(`https://graph.instagram.com/me?fields=id,username,media_count&access_token=${token}`)
 	},
 
 	loadMedia:async(token,url)=>{

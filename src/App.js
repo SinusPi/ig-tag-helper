@@ -39,7 +39,7 @@ const initialState = {
   tags: JSON.parse(window.localStorage.getItem("instagram_tags") || "null"),
 }
 */
-const load = id => { try { return JSON.parse(localStorage.getItem(id) )| "null" } catch { return null } }
+const load = id => { try { return JSON.parse(localStorage.getItem(id)) } catch { return null } }
 const save = (val, id) => localStorage.setItem(id, JSON.stringify(val))
 
 const initialState = {
@@ -48,11 +48,12 @@ const initialState = {
   media: load("instagram_media"),
   auth_shown: false,
   username: null,
+  mediaCount: null,
   allmedia: !!load("instagram_media"),
   loading: false,
   error: false,
   url: null,
-  selectedtags: (()=>{let s=load("selected_tags"); return ((typeof s==Array) && s) || []})(),
+  selectedtags: (()=>{let s=load("selected_tags"); return (s && s.length)?s:[]})(),
   tags: null,
   mediatags: null,
   counterloading: false,
@@ -79,10 +80,12 @@ function appReducer(state = initialState, action) {
     case "oauth/error":
       return { ...state, token: null, userid: null, loading: false, auth_shown: false, error: action.payload }
 
+    case "loader/clear":
+      return { ...state, media:[], mediatags:null, tagcounts:null, loading:false, url:null, allmedia:false }
     case "loader/loading":
       return { ...state, loading: true }
     case "loader/gotusername":
-      return { ...state, username: action.payload, loading: false }
+      return { ...state, username: action.payload.username, mediaCount:action.payload.media_count, loading: false }
     case "loader/gotmedia":
       const newmedia = state.media || []
       const allmedia = !action.payload.url
@@ -173,7 +176,7 @@ function heartbeat() {
     console.log("LOGIN")
     life--
     store.dispatch({ type: "loader/loading" })
-    InstagramMediaLoader.login(state.token).then(data => store.dispatch({ type: "loader/gotusername", payload: data.username }), err => store.dispatch({ type: "oauth/error", payload: err }))
+    InstagramMediaLoader.login(state.token).then(data => store.dispatch({ type: "loader/gotusername", payload: data }), err => store.dispatch({ type: "oauth/error", payload: err }))
   } else if (!state.loading && state.username && !state.allmedia) {
     console.log("GET MEDIA")
     life--
@@ -224,7 +227,8 @@ function App() {
 
   const userid = useSelector(state => state.userid)
   const username = useSelector(state => state.username)
-  const media = useSelector(state => state.media)
+  const media = useSelector(state => state.media) || []
+  const mediaCount = useSelector(state => state.mediaCount) || 0
   const loading = useSelector(state => state.loading)
   const tags = useSelector(state => state.tags)
   const auth_shown = useSelector(state => state.auth_shown)
@@ -292,6 +296,7 @@ function App() {
               <>
                 <div style={{ flex: "1 1" }}>{userid && username ? <div>Logged in as: <b>{username}</b></div> : "Not logged in"}</div>
                 <Button style={{ minWidth: "8em", flex: "0 0" }} onClick={() => store.dispatch({ type: "oauth/clear" })}>Reset</Button>
+                <Button style={{ minWidth: "8em", flex: "0 0" }} onClick={() => store.dispatch({ type: "loader/clear" })}>Reload</Button>
                 <Button style={{ minWidth: "8em", flex: "0 0" }} onClick={() => store.dispatch({ type: "oauth/query" })}>Reauthorize</Button>
               </>
             }
@@ -362,7 +367,7 @@ function App() {
       */}
         </div>
         <Backdrop className="backdrop" open={loading}>
-          <CircularProgress color="primary" />
+          <CircularProgress color="primary" variant="determinate" value={media.length/mediaCount*100} />
         </Backdrop>
       </>
     </Router>

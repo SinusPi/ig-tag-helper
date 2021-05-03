@@ -19,7 +19,7 @@ export function FocusedTag() {
 	const is_vague = (tag.indexOf("*") > -1)
 	const memoChipclick = useCallback((ev) => chipclick(ev, htag), [htag])
 	const memoChipclickToggle = useCallback((ev) => chipclick_toggle(ev, htag), [htag])
-	if (!all_tags && !this_tag) return null;
+	if (!all_tags || !(is_vague || this_tag)) return null;
 	//const tag = useSelector(state=>state.focustag)
 	const is_selected = selectedtags.includes(htag)
 	const regexp = (tag.replace("*", ".*"))

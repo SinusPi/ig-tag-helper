@@ -23,7 +23,7 @@ export const MediaList = (props) => {
                 <Link to={`/insta/${idx}`}><div
                   style={{
                     //backgroundImage: `url(${med.media_url})`,
-                    backgroundImage: `url(${med.media_url})`,
+                    backgroundImage: `zurl(${med.media_url})`,
                     boxShadow:
                       (mediatags?.[med.id]?.includes(focusedtag) && `inset 0px 0px 0px 10px ${theme.palette.primary.main}`)
                       ||
