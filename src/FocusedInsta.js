@@ -8,8 +8,8 @@ export function FocusedInsta() {
 	const media = useSelector(state => state.media)
 	const mediatags = useSelector(state => state.mediatags)
 	const selectedtags = useSelector(state => state.selectedtags)
+	if (!media) return null;
 	const insta = media[id]
-	if (!insta) return null;
 	return <>
 		<p style={{fontWeight:"bold"}}>{insta.caption.substring(0, 50)}</p>
 		<div className="tagbox">

@@ -1,7 +1,9 @@
 import './App.css';
 import React from 'react';
 import { Button, Dialog, CircularProgress, Backdrop, Tooltip, Chip, createMuiTheme, Divider, Paper } from '@material-ui/core';
-import InstagramLogin from "react-instagram-oauth";
+import DialogContent from '@material-ui/core/DialogContent';
+import DialogContentText from '@material-ui/core/DialogContentText';
+import DialogTitle from '@material-ui/core/DialogTitle';import InstagramLogin from "react-instagram-oauth";
 import { Link } from "react-router-dom";
 import { createStore } from 'redux'
 import { useSelector } from 'react-redux'
@@ -12,6 +14,7 @@ import { InstagramMediaLoader } from "./InstagramMediaLoader.js"
 import { SelectedTags } from "./SelectedTags.js"
 import { FocusedTag } from "./FocusedTag.js"
 import { FocusedInsta } from "./FocusedInsta.js"
+import { Topbar } from "./Topbar.js"
 import {
   BrowserRouter as Router,
   Switch,
@@ -22,8 +25,9 @@ import {
 var CFG = {}
 CFG.insta_app_id = "578554696871308";
 CFG.insta_app_secret = "f8bcfef01d08270b99f4e092231f9c0c";
-CFG.redirect_uri = window.location.protocol + "//" + window.location.host + "/";
-
+CFG.redirect_uri = process.env.REACT_APP_API_URI;
+console.log(CFG);
+console.log(process.env);
 /*
 const initialState = {
   token: JSON.parse(window.localStorage.getItem("instagram_token") || "null"),
@@ -53,7 +57,7 @@ const initialState = {
   loading: false,
   error: false,
   url: null,
-  selectedtags: (()=>{let s=load("selected_tags"); return (s && s.length)?s:[]})(),
+  selectedtags: (() => { let s = load("selected_tags"); return (s && s.length) ? s : [] })(),
   tags: null,
   mediatags: null,
   counterloading: false,
@@ -69,6 +73,8 @@ function appReducer(state = initialState, action) {
       save(action.payload.token, "instagram_token")
       save(action.payload.userid, "instagram_userid")
       return { ...state, token: action.payload.token, userid: action.payload.userid, error: null, loading: false, auth_shown: false }
+    case "oauth/cancel":
+      return { ...state, auth_shown: false }
     case "oauth/clear":
       localStorage.removeItem("instagram_token")
       localStorage.removeItem("instagram_userid")
@@ -81,16 +87,16 @@ function appReducer(state = initialState, action) {
       return { ...state, token: null, userid: null, loading: false, auth_shown: false, error: action.payload }
 
     case "loader/clear":
-      return { ...state, media:[], mediatags:null, tagcounts:null, loading:false, url:null, allmedia:false }
+      return { ...state, media: [], mediatags: null, tagcounts: null, loading: false, url: null, allmedia: false }
     case "loader/loading":
       return { ...state, loading: true }
     case "loader/gotusername":
-      return { ...state, username: action.payload.username, mediaCount:action.payload.media_count, loading: false }
+      return { ...state, username: action.payload.username, mediaCount: action.payload.media_count, loading: false }
     case "loader/gotmedia":
-      const newmedia = state.media || []
+      const newmedia = (state.media || []).concat(action.payload.media)
       const allmedia = !action.payload.url
-      save(action.payload.media, "instagram_media")
-      return { ...state, media: newmedia.concat(action.payload.media), url: action.payload.url, allmedia, loading: false }
+      save(newmedia, "instagram_media")
+      return { ...state, media: newmedia, url: action.payload.url, allmedia, loading: false }
 
     case "analyzer/analyzed":
       return { ...state, mediatags: action.payload.mediatags, tags: action.payload.tags }
@@ -120,11 +126,11 @@ function appReducer(state = initialState, action) {
       const i = st.indexOf(tag)
       if (i > -1) st.splice(i, 1)
       else st.push(tag)
-      save(st,"selected_tags")
+      save(st, "selected_tags")
       return { ...state, selectedtags: st }
 
     case "selecttag/clear":
-      save(st,"selected_tags")
+      save(st, "selected_tags")
       return { ...state, selectedtags: [] }
 
     default:
@@ -284,30 +290,19 @@ function App() {
   */
 
   return (
-    <Router>
+    <Router basename={process.env.PUBLIC_URL}>
       {!media && !code_in_url && <Redirect to="/" />}
       <>
         <div className="App">
 
-          <div className="topbar">
-            {code_in_url ?
-              <div style={{ flex: "1 1" }}>Authenticating...</div>
-              :
-              <>
-                <div style={{ flex: "1 1" }}>{userid && username ? <div>Logged in as: <b>{username}</b></div> : "Not logged in"}</div>
-                <Button style={{ minWidth: "8em", flex: "0 0" }} onClick={() => store.dispatch({ type: "oauth/clear" })}>Reset</Button>
-                <Button style={{ minWidth: "8em", flex: "0 0" }} onClick={() => store.dispatch({ type: "loader/clear" })}>Reload</Button>
-                <Button style={{ minWidth: "8em", flex: "0 0" }} onClick={() => store.dispatch({ type: "oauth/query" })}>Reauthorize</Button>
-              </>
-            }
-          </div>
+          <Topbar username={username} authenticating={code_in_url}></Topbar>
 
           <div className={`content ${code_in_url ? "is-hidden" : ""}`}>
 
             {/* MAIN APP */}
 
             <Paper>
-            {tags && <SelectedTags />}
+              {tags && <SelectedTags />}
             </Paper>
 
             <Paper>
@@ -330,11 +325,8 @@ function App() {
 
           </div>
 
-          <TokenDialog
-            open={auth_shown}
-            onClose={() => null}>
-            <div>You need an Instagram token.</div>
-            <div>Please re-authorize with Instagram.</div>
+          <TokenDialog open={auth_shown} onClose={()=>store.dispatch({type:"oauth/cancel"})}>
+            <p>You need to authorize with your Instagram account.</p>
 
             <InstagramLogin
               authCallback={authHandler}
@@ -344,6 +336,8 @@ function App() {
               scope={["user_profile", "user_media"]}
               buttonTheme="simple"
             />
+
+            <p><small>Note: This simple app sends its "secret" code in plain sight, but it only receives read access to your public profile and media.</small></p>
           </TokenDialog>
 
           <InstagramLogin
@@ -367,7 +361,7 @@ function App() {
       */}
         </div>
         <Backdrop className="backdrop" open={loading}>
-          <CircularProgress color="primary" variant="determinate" value={media.length/mediaCount*100} />
+          <CircularProgress color="primary" variant="determinate" value={media.length / mediaCount * 100} />
         </Backdrop>
       </>
     </Router>
@@ -375,13 +369,13 @@ function App() {
   );
 }
 
-export function chipclick_toggle(ev,t) {
+export function chipclick_toggle(ev, t) {
   ev.preventDefault()
   store.dispatch({ type: "selecttag/toggle", payload: { tag: t } })
 }
 export function chipclick(ev, t) {
   if (!ev.shiftKey) return true;
-  chipclick_toggle(ev,t)
+  chipclick_toggle(ev, t)
 }
 
 function TokenDialog(props) {
@@ -392,8 +386,14 @@ function TokenDialog(props) {
   };
 
   return (
-    <Dialog onClose={handleClose} aria-labelledby="simple-dialog-title" open={open}>
+    <Dialog onClose={handleClose} aria-labelledby="simple-dialog-title" open={open} className="tokendialog">
+      <DialogTitle>
+        Instagram authentication
+      </DialogTitle>
+      <DialogContent>
       {children}
+
+      </DialogContent>
     </Dialog>
   );
 }

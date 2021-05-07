@@ -42,7 +42,8 @@ export const TagChip = React.memo(props=> {
 			component={Link}
 			to={`/tag/${props.tag.substring(1)}`}
 			onDelete={memoToggleclick}
-			deleteIcon={props.isSelected?null:<Add/>}
+			//deleteIcon={props.isSelected?null:<Add/>}
+			classes={{deleteIcon:props.isSelected?"red":"green"}}
 		/>
 	)
 })

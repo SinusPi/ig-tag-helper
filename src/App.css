@@ -57,6 +57,10 @@ body {
 .loading {
  
 }
+
+.tokendialog {
+  padding:1em;
+}
 .chip-tagwith::before { content: " +"; }
 .chip-tagtotal::before { content: " *"; }
 .chip-toggle { vertical-align: "inherit"; margin-left: "8px"; margin-right: "-4px"; width:2em; }
@@ -70,3 +74,19 @@ body {
 .selectedtags .header.norm { background-color:white; color:black; }
 .selectedtags .header.full { background-color:#dfd; color:black; }
 .selectedtags .header.over { background-color:#a00; color:white; }
+
+.MuiChip-deleteIcon.green {
+  transform:rotate(45deg);
+  Zcolor:hsla(120,100%,30%,75%);
+  transition:transform 0.5s;
+}
+.MuiChip-deleteIcon.green:hover {
+  Zcolor:hsla(120,60%,50%,75%);
+}
+.MuiChip-deleteIcon.red {
+  Zcolor:hsla(0,100%,30%,75%);
+  transition:transform 0.5s;
+}
+.MuiChip-deleteIcon.red:hover {
+  Zcolor:hsla(0,60%,50%,75%);
+}
