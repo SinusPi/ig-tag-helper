@@ -14,6 +14,7 @@
     "react-redux": "^7.2.3",
     "react-router-dom": "^5.2.0",
     "react-scripts": "4.0.3",
+    "sftp-upload": "^1.0.3",
     "web-vitals": "^1.1.1"
   },
   "scripts": {
@@ -39,5 +40,9 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "babel-plugin-auto-import": "^1.1.0",
+    "node-sass": "^5.0.0"
   }
 }

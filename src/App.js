@@ -1,13 +1,11 @@
-import './App.css';
 import React from 'react';
-import { Button, Dialog, CircularProgress, Backdrop, Tooltip, Chip, createMuiTheme, Divider, Paper } from '@material-ui/core';
+import { Dialog, CircularProgress, Backdrop, createMuiTheme, Paper, Container } from '@material-ui/core';
 import DialogContent from '@material-ui/core/DialogContent';
-import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';import InstagramLogin from "react-instagram-oauth";
 import { Link } from "react-router-dom";
 import { createStore } from 'redux'
 import { useSelector } from 'react-redux'
-import { makeStyles } from '@material-ui/core/styles';
+import { ThemeProvider } from '@material-ui/core/styles';
 import { MediaList } from './MediaList.js';
 import { MediaAnalyzer } from "./MediaAnalyzer.js"
 import { InstagramMediaLoader } from "./InstagramMediaLoader.js"
@@ -21,6 +19,8 @@ import {
   Route,
   Redirect,
 } from "react-router-dom";
+
+import "./App.scss"
 
 var CFG = {}
 CFG.insta_app_id = "578554696871308";
@@ -229,9 +229,17 @@ const authHandler = (a, b) => {
   }
 }
 
+const theme = createMuiTheme({
+	typography: {
+	  h1: {
+      fontSize:"1.3rem",
+      background:"#eee",
+	  },
+	},
+});
+
 function App() {
 
-  const userid = useSelector(state => state.userid)
   const username = useSelector(state => state.username)
   const media = useSelector(state => state.media) || []
   const mediaCount = useSelector(state => state.mediaCount) || 0
@@ -289,23 +297,29 @@ function App() {
   }, []);
   */
 
-  return (
-    <Router basename={process.env.PUBLIC_URL}>
-      {!media && !code_in_url && <Redirect to="/" />}
+  var app
+
+  const backdrop = (
+    <Backdrop className="backdrop" open={loading}>
+      <CircularProgress color="primary" variant="determinate" value={media.length / mediaCount * 100} />
+    </Backdrop>
+  )
+  app = (
       <>
         <div className="App">
 
           <Topbar username={username} authenticating={code_in_url}></Topbar>
 
+          <Container>
           <div className={`content ${code_in_url ? "is-hidden" : ""}`}>
 
             {/* MAIN APP */}
 
-            <Paper>
+            <Paper elevation={1}>
               {tags && <SelectedTags />}
             </Paper>
 
-            <Paper>
+            <Paper elevation={1}>
               <MediaList className="media" media={media} />
               {tags && <Link to="/tag/*">All tags</Link>}
             </Paper>
@@ -351,22 +365,31 @@ function App() {
           />
 
           {/*
-      <InstagramLogin
-        authCallback={authHandler}
-        appId={CFG.insta_app_id}
-        appSecret={CFG.insta_app_secret}
-        redirectUri={CFG.redirect_uri}
-        className={"is-hidden"}
-      />
-      */}
+          <InstagramLogin
+            authCallback={authHandler}
+            appId={CFG.insta_app_id}
+            appSecret={CFG.insta_app_secret}
+            redirectUri={CFG.redirect_uri}
+            className={"is-hidden"}
+          />
+          */}
+        </Container>
         </div>
-        <Backdrop className="backdrop" open={loading}>
-          <CircularProgress color="primary" variant="determinate" value={media.length / mediaCount * 100} />
-        </Backdrop>
+        {backdrop}
       </>
-    </Router>
-
   );
+  app = (
+    <Router basename={process.env.PUBLIC_URL}>
+      {!media && !code_in_url && <Redirect to="/" />}
+      {app}
+    </Router>
+  )
+  app = (
+    <ThemeProvider theme={theme}>
+      {app}
+    </ThemeProvider>
+  )
+  return app
 }
 
 export function chipclick_toggle(ev, t) {

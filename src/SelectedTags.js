@@ -3,7 +3,7 @@ import { useSelector } from "react-redux";
 import { useContext } from "react";
 import React from "react";
 import { chipclick } from "./App.js"
-import { Chip, Button, Snackbar, Paper, Tooltip } from '@material-ui/core';
+import { Chip, Button, Snackbar, Paper, Tooltip, Typography, createMuiTheme } from '@material-ui/core';
 import { Link, useLocation } from "react-router-dom";
 
 function copytags(tags, succ) {
@@ -19,9 +19,9 @@ function copytags(tags, succ) {
 function cleartags(store) {
 	store.dispatch({ type: "selecttag/clear", payload: null })
 }
-
+  
 const SelectedTagsHeader = React.memo((props) => {
-	return (<div className={`header ${count_tag(props.count)}`} style={{ fontWeight: "bold" }}>Tag box: <span className="count">[{props.count}]</span></div>)
+	return (<Typography variant="h1" className={`header ${count_tag(props.count)}`} style={{ fontWeight: "bold" }}>Tag box: <span className="count">[{props.count}]</span></Typography>)
 })
 
 function count_tag(count) {

@@ -7,6 +7,7 @@ import InstagramIcon from '@material-ui/icons/Instagram';
 import { TagChip } from './TagChip';
 import React, { useCallback } from "react";
 import { Add } from '@material-ui/icons';
+import { TagBox } from './TagBox';
 
 
 export function FocusedTag() {
@@ -24,7 +25,7 @@ export function FocusedTag() {
 	const is_selected = selectedtags.includes(htag)
 	const regexp = (tag.replace("*", ".*"))
 	const taglist = is_vague
-		? Object.keys(all_tags).filter(t => t.match(regexp)).sort((a, b) => all_tags[b].count - all_tags[a].count)
+		? Object.keys(all_tags).filter(t => t.match(regexp))
 		: this_tag.with_ordered
 
 
@@ -50,9 +51,7 @@ export function FocusedTag() {
 			}
 			<Divider />
 			{!is_vague && <p style={{ fontWeight: "bold" }}>Paired with:</p>}
-			<div className="tagbox">
-				{taglist.map((t, i) => <TagChip tag={t} common={!is_vague ? this_tag.with[t] : 0} key={t} isSelected={selectedtags.includes(t)} />)}
-			</div>
+			<TagBox key="ft" tags={taglist} commonWith={!is_vague && this_tag} selected={this_tag} />
 		</Paper>
 	)
 	//className={`chip ${selectedtags.includes(t)?"selected":""}`}
